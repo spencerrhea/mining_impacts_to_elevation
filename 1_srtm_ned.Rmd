@@ -19,7 +19,12 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-## Download the data
+## USGS analysis of topographic change
+
+Analysis background can be found here: https://www.usgs.gov/land-resources/eros/topochange
+
+
+### Download the data
 
 
 ```{r, eval=F}
@@ -40,7 +45,7 @@ unzip('data/topo_change.zip',exdir='data/topo_change')
 
 ```
 
-## Check out the data
+### Check out the data
 
 ```{r}
 
@@ -57,7 +62,7 @@ biggest_area <- topo_change %>%
 mapview(biggest_area)
 ```
 
-## Checkout mine in Arizona
+### Checkout mine in Arizona
 
 ```{r}
 # Subset to just Arizona
@@ -70,7 +75,9 @@ mapview(az_mine)
 
 
 
-## Download pre-mining DEM 
+## Getting our own elevation datasets
+
+### Download pre-mining DEM 
 
 ```{r}
 
@@ -90,9 +97,9 @@ plot(az_raster_before)
 ```
 
 
-## Download post-mining DEM
+### Download post-mining DEM
 
-Data comes from SRTM
+Data comes from [SRTM](https://www2.jpl.nasa.gov/srtm/) 
 
 ```{r,eval=F}
 #Extract centroid of mine polygon
@@ -111,14 +118,15 @@ getData('SRTM',lon=coords[1],lat=coords[2],
 ```
 
 
-## Read in SRTM data
+### Read in SRTM data
 ```{r}
 az_raster_after <- raster('data/srtm_14_06.tif')
 
 ```
 
+## Looking at Elevation change before and after mining
 
-## Clip SRTM data to NED data
+### Clip SRTM data to NED data
 
 ```{r}
 #Check resolution of rasters
@@ -145,11 +153,118 @@ plot(az_raster_after_clip)
 ```
 
 
+### Taking the difference and plotting it
 
 ```{r}
 # Take the elevation difference
 dem_diff <- az_raster_before_trim - az_raster_after_clip
 
 plot(dem_diff)
+
+```
+
+
+# In-class work
+
+## 1) What is the maximum/minimum elevation change caused by mining?
+
+You may want to check out the command maxValue and minValue
+
+```{r}
+
+#YOUR CODE HERE
+```
+
+
+## 2) What is the background elevation "error" between NED and SRTM? 
+
+The national elevation dataset (NED) and the Shuttle 
+Radar Topography Mission are extremely different ways to
+estimate elevatino. NED is derived from thousands of 
+compiled elevation datasets that can be collected on the
+ground, from LiDAR or other ways, while SRTM is collected
+with radar from space. As a result, we naturally expect
+there to be some background differences in these 
+two DEMs, so what is the average difference in these DEMs
+in parts of the landscape that have not undergone substantial 
+elevation change? 
+
+### 2a) Buffer the az_mine object by 5 kilometers using the sf::st_buffer command
+
+```{r}
+
+#Your code here
+
+
+```
+
+
+### 2b) Use the the st_transform command to transform the 
+projection of your buffered az_mine dataset to the 
+same projection as the dem_diff raster dataset
+
+hint: you may want to explore st_crs to help you here
+
+```{r}
+
+```
+
+
+### 2c) Use the raster::mask command to mask out all the 
+areas inside of the buffered and reprojected az_mine dataset.
+
+hint: look at the mask command and try to understand what
+the inverse option does
+
+```{r}
+#Your code here
+```
+
+
+### 2d) Use the summary command to look at the summary of
+differences between these two DEMs in areas where there has
+been no mining
+
+
+## 3) What does the shape of the "error" distribution look like
+in areas that have not been mined versus areas that have
+been mined? 
+
+To look at distributional changes, we may want to convert this
+raster dataset back into a data.frame or tibble type shape so 
+that we can take advantage of ggplots plotting capabilities and 
+make a plot of the two dems.
+
+### 3a) Mask the raster dem_diff dataset to the exact outlines of the
+USGS az_mine dataset
+
+```{r}
+
+```
+
+
+### 3b) Use the getValues command to extract the elevation
+values from both the unmined and mined regions of your rasters. 
+Label these vectors as `unmined_dem` and `mined_dem`. 
+
+```{r}
+
+
+
+```
+
+
+### 3c) Use ggplot and the command geom_density() to look at
+the differences in mined and unmined regions of Arizona.
+
+```{r}
+# Here I'm just making the table for you
+
+unmined_type <- rep('unmined',length(unmined_dem))
+mined_type <- rep('mined',length(mined_dem))
+mined_table <- tibble(dem_values = c(unmined_dem,mined_dem),
+                      type = c(unmined_type,mined_type)) 
+                      
+                    
 ```
 

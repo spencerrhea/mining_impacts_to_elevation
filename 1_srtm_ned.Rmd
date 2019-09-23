@@ -1,0 +1,155 @@
+---
+title: "Topographic Change caused by People"
+author: "Matthew Ross"
+date: "9/23/2019"
+output: html_document
+---
+
+
+# Analyzing topographic change in the USA
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(sf)  #Spatial datasets
+library(mapview) #interactive mapping
+library(raster) #Raster analysis
+library(elevatr) #National Elevation Dataset downloader. 
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Download the data
+
+
+```{r, eval=F}
+#Create a new folder 
+dir.create('data')
+
+#Download files
+download.file(url='https://edcintl.cr.usgs.gov/downloads/sciweb1/shared/topo/downloads/Topochange/topo_change_polygons_Shapefile.zip',destfile='data/topo_change.zip')
+
+# List files in the data directory
+#list.files('data')
+
+#Unzip the dataset
+unzip('data/topo_change.zip',exdir='data/topo_change')
+
+#Check that the unzipping worked
+#list.files('data/topo_change')
+
+```
+
+## Check out the data
+
+```{r}
+
+topo_change <- st_read('data/topo_change/topo_change_polygons.shp')
+
+#Checkout the column names
+#names(topo_change)
+
+biggest_area <- topo_change %>%
+  arrange(desc(AREA_SQ_KM)) %>%
+  slice(1:10)
+
+# Map all mines
+mapview(biggest_area)
+```
+
+## Checkout mine in Arizona
+
+```{r}
+# Subset to just Arizona
+az_mine <- biggest_area %>%
+  filter(QUADNAME == 'esperanza_mill_AZ')
+
+#Check that it is the right site
+mapview(az_mine)
+```
+
+
+
+## Download pre-mining DEM 
+
+```{r}
+
+#Check projection of az_mine
+#st_crs(az_mine)
+
+az_raster_before <- get_elev_raster(az_mine,z=12)
+
+#Look at the structure of the data
+#str(az_raster)
+
+#Summary of the data
+#summary(az_raster)
+
+plot(az_raster_before)
+
+```
+
+
+## Download post-mining DEM
+
+Data comes from SRTM
+
+```{r,eval=F}
+#Extract centroid of mine polygon
+az_center <- st_centroid(az_mine) %>%
+  st_transform(4326)
+#Map it to check
+mapview(az_center)
+
+#Get coords 
+coords <- st_coordinates(az_center)
+
+
+getData('SRTM',lon=coords[1],lat=coords[2],
+        path='data')
+
+```
+
+
+## Read in SRTM data
+```{r}
+az_raster_after <- raster('data/srtm_14_06.tif')
+
+```
+
+
+## Clip SRTM data to NED data
+
+```{r}
+#Check resolution of rasters
+# res(az_raster_after)
+# res(az_raster_before)
+
+#Check the projection
+# projection(az_raster_after)
+# projection(az_raster_before)
+
+
+#Reproject small raster to larger raster projection
+az_raster_before_reproj <- projectRaster(az_raster_before,
+                                        az_raster_after)
+
+#Trim whitespace
+az_raster_before_trim <- trim(az_raster_before_reproj) 
+
+#Crop to match extents
+az_raster_after_clip <- crop(az_raster_after,az_raster_before_trim)
+
+#Plot clipped dataset
+plot(az_raster_after_clip)
+```
+
+
+
+```{r}
+# Take the elevation difference
+dem_diff <- az_raster_before_trim - az_raster_after_clip
+
+plot(dem_diff)
+```
+

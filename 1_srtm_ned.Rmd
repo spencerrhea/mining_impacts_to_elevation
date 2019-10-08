@@ -3,6 +3,8 @@ title: "Topographic Change caused by People"
 author: "Matthew Ross"
 date: "9/23/2019"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 
@@ -14,6 +16,7 @@ library(sf)  #Spatial datasets
 library(mapview) #interactive mapping
 library(raster) #Raster analysis
 library(elevatr) #National Elevation Dataset downloader. 
+library(mapview)
 
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -167,12 +170,16 @@ plot(dem_diff)
 # In-class work
 
 ## 1) What is the maximum/minimum elevation change caused by mining?
+#max = 38.5
+#Min = -73
 
 You may want to check out the command maxValue and minValue
 
 ```{r}
 
-#YOUR CODE HERE
+maxValue(dem_diff)
+minValue(dem_diff)
+
 ```
 
 
@@ -193,9 +200,9 @@ elevation change?
 
 ```{r}
 
-#Your code here
-
-
+az_buf<- az_mine %>%
+  st_transform(2163) %>%
+  st_buffer(5000)
 ```
 
 
@@ -206,7 +213,7 @@ same projection as the dem_diff raster dataset
 hint: you may want to explore st_crs to help you here
 
 ```{r}
-
+az_buf_trans <- st_transform(az_buf, crs = 4326)
 ```
 
 
@@ -217,7 +224,9 @@ hint: look at the mask command and try to understand what
 the inverse option does
 
 ```{r}
-#Your code here
+mask_az_outside <- mask(dem_diff, az_buf_trans, inverse = TRUE)
+plot(mask_az_outside)
+summary(mask_az_outside)
 ```
 
 
@@ -225,6 +234,9 @@ the inverse option does
 differences between these two DEMs in areas where there has
 been no mining
 
+```{r}
+summary(mask_az_outside)
+```
 
 ## 3) What does the shape of the "error" distribution look like
 in areas that have not been mined versus areas that have
@@ -239,6 +251,10 @@ make a plot of the two dems.
 USGS az_mine dataset
 
 ```{r}
+az_mine_trans <- st_transform(az_mine, 4326)
+
+dem_diff_exact <- mask(dem_diff, az_mine_trans)
+plot(dem_diff_exact)
 
 ```
 
@@ -248,8 +264,8 @@ values from both the unmined and mined regions of your rasters.
 Label these vectors as `unmined_dem` and `mined_dem`. 
 
 ```{r}
-
-
+unmined_dem <- getValues(mask_az_outside)
+mined_dem <- getValues(dem_diff_exact)
 
 ```
 
@@ -264,6 +280,11 @@ unmined_type <- rep('unmined',length(unmined_dem))
 mined_type <- rep('mined',length(mined_dem))
 mined_table <- tibble(dem_values = c(unmined_dem,mined_dem),
                       type = c(unmined_type,mined_type)) 
+
+ggplot(mined_table, aes(x = dem_values)) +
+  geom_density() +
+  facet_wrap(~type) +
+  theme_classic()
                       
                     
 ```
